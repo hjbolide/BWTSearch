@@ -97,179 +97,159 @@ public class XpathQuery {
 		int position = 0;
 		boolean fetchMode = false;
 		boolean checkMode = false;
-		boolean searchMode = false;
-		
-		char leaf = querySequence.get(queryLength-1);
+		int firstCondition = 0;
 
 		String searchPattern = new String();
 		char tmpC;
 		char tarC;
+		char careC;
+		char conditionC = ' ';
+		char searchTmpC;
 		char preC = ' ';
-		ArrayList<Integer> checkList = new ArrayList<Integer>();
+		ArrayList<Integer> goodList = new ArrayList<Integer>();
+		ArrayList<Integer> skipList = new ArrayList<Integer>();
 		int checkModePosMark = 0;
-		int searchModePosMark = 0;
-		ArrayList<Boolean> searchResults = new ArrayList<Boolean>();
-		boolean searchResult = true;
-		Stack<Character> checkStack = new Stack<Character>();
+		int fetchModeStackSize = 0;
+		int tmpPosition = 0;
+
+		Algo algo = new Algo();
+
+		int tmpStackSize = 0;
+		int tmpGoodPosition = 0;
+
+		boolean searchResult = false;
 
 		String currentPredicates = new String();
 		Stack<Character> stack = new Stack<Character>();
+		Stack<Character> tmpStack = new Stack<Character>();
 		for (position = 0; position < length; position++) {
-
-			// get the next Char
+			
+			if(skipList.contains(position)) {
+				tmpStack.clear();
+				tmpStack.push(fileContent[position++]);
+				while(tmpStack.size() > 0) {
+					char c = fileContent[position++];
+					if(Character.isLetter(c))
+						tmpStack.push(c);
+					if(c == '.') 
+						tmpStack.pop();
+				}
+			}
+			
+			// the char from file
 			tmpC = fileContent[position];
-			// get the expected Char
+
+			// the char from querySequence
 			tarC = querySequence.get(queryIndex);
 
-			// if is the checkMode, we need to do some search and then
-			// see if the $ is good or not
-			if (checkMode) {
+			if (Character.isLetter(tmpC)) {
+				stack.push(tmpC);
+			}
 
-				// filter the currentPredicates
-				String[] currentPredicatesChunk = currentPredicates
-						.split("[\\[\\]]");
-
-				// recursively doing the check thing.
-				for (int i = 0; i < currentPredicatesChunk.length; i++) {
-
-					// filter the empty string
-					if (currentPredicatesChunk[i].length() == 0)
-						continue;
-
-					// get the currentPredicate and filter the ~ and "
-					String[] currentPredicate = currentPredicatesChunk[i]
-							.split("[\\~\"]");
-
-					// loop to search for the qualified node
-					for (int j = 0; j < currentPredicate.length; j++) {
-						if (currentPredicate[j].length() == 0)
-							continue;
-						if (currentPredicate[j].length() == 1) {
-							checkStack.add(currentPredicate[j].charAt(0));
-							continue;
+			// if the expected char shows up
+			if (tmpC == tarC || tarC == '*') {
+				currentPredicates = predicates.get(tarC);
+				if (currentPredicates != null) {
+					// need to check the nodes
+					checkMode = true;
+					tmpGoodPosition = position;
+					tmpStackSize = stack.size();
+					careC = tmpC;
+					String[] currentPredicatesChunk = currentPredicates
+							.split("[\\[\\]]");
+					for (int i = 0; i < currentPredicatesChunk.length; i++) {
+						if (currentPredicatesChunk[i].length() != 0) {
+							firstCondition = i;
+							break;
 						}
-						searchPattern = currentPredicate[j];
-						searchMode = true;
 					}
-					if (searchMode) {
-						preC = tmpC;
-						searchModePosMark = position;
-						tarC = checkStack.peek();
-						while (position < length) {
-							tmpC = fileContent[position];
-
-							// if the $ shows, and is the related one
-							// we search for it.
-							if (tmpC == '$' && preC == tarC) {
-								// see if here is OK
-								searchResult = true;
+					for (int i = 0; i < currentPredicatesChunk.length; i++) {
+						if (currentPredicatesChunk[i].length() == 0)
+							continue;
+						String[] currentPredicateChunk = currentPredicatesChunk[i]
+								.split("[\\~\"]");
+						for (int j = 0; j < currentPredicateChunk.length; j++) {
+							if(currentPredicateChunk[j].length() == 0)
+								continue;
+							if(currentPredicateChunk[j].length() == 1) {
+								conditionC = currentPredicateChunk[j].charAt(0);
+								continue;
 							}
 							
-							if (tmpC == '$' && fetchMode && (preC == leaf || leaf == '*')) {
-								if(!checkList.contains(position))
-									checkList.add(position);
-							}
+							searchPattern = currentPredicateChunk[j];
+							checkModePosMark = position;
 
-							// store the coming one
-							if (Character.isLetter(tmpC)) {
-								checkStack.add(tmpC);
-							}
+							while (stack.size() >= tmpStackSize - 1) {
 
-							// encounter ., then we need to pop up
-							if (tmpC == '.') {
-								checkStack.pop();
+								if (stack.size() == tmpStackSize) {
+									careC = stack.peek();
+								}
 
-								// if the stack is empty
-								// end of the search, rewind to the starting
-								// position
-								if (checkStack.size() == 0) {
-									searchMode = false;
-									if(i != currentPredicatesChunk.length - 1)
-										position = searchModePosMark;
-									else {
-										stack.pop();
+								searchTmpC = fileContent[++position];
+
+								if(Character.isLetter(searchTmpC)) {
+									
+									stack.push(searchTmpC);
+								}
+								
+								if (searchTmpC == '.') {
+									stack.pop();
+									if(stack.size() == tmpStackSize - 1) {
+										if(searchResult && (i == firstCondition)) {
+											// check if the first one 
+											// direct add
+											// otherwise intersect.
+											goodList.add(tmpGoodPosition);
+											searchResult = false;
+										} else if( !searchResult ) {
+											if(goodList.contains(tmpGoodPosition)) {
+												goodList.remove(tmpGoodPosition);
+											}
+											skipList.add(tmpGoodPosition);
+										}
+										tmpGoodPosition = position+1;
 									}
-									break;
+								}
+
+								if (searchTmpC == conditionC) {
+									if (fileContent[position + 2] != '.') {
+										continue;
+									}
+									tmpPosition = position+2;
+									while (fileContent[tmpPosition] != '$') {
+										tmpPosition++;
+									}
+									if (algo.search("tiny.bwt", "["
+											+ tmpPosition + "]", searchPattern)) {
+										searchResult |= true;
+									}
 								}
 							}
-							position++;
-							preC = tmpC;
+
+							position = checkModePosMark;
+							stack.push(fileContent[position-1]);
+							stack.push(fileContent[position]);
 						}
 					}
-					// store the searchResult, we need it to see if all the
-					// conditions are satisfied
-					searchResults.add(searchResult);
 				}
-
-				// if one of those conditions is not satisfied.
-				// we don't need to rewind.
-				// else we rewind it to fetch all the nodes.
-				if (!searchResults.contains(false)) {
-					checkMode = false;
-					continue;
+				if(queryIndex == querySequence.size() - 1) {
+					fetchMode = true;
+					fetchModeStackSize = stack.size();
 				} else {
-					checkList.clear();
+					queryIndex++;
 				}
-
-				if (Character.isLetter(tmpC)) {
-					stack.add(tmpC);
-				}
-
-				if (tmpC == '.') {
-					stack.pop();
-					if (stack.size() == checkModePosMark) {
-						checkMode = false;
-						queryIndex--;
-					}
-				}
-
-				preC = tmpC;
-			} else {
-				// if the tmpC is a character, push it to stack
-				if (Character.isLetter(tmpC)) {
-					stack.push(tmpC);
-				}
-
-				// if the tmpC equals to tarC, or tarC is a wildcard which
-				// can match everything
-				// or the third situation is we can't make * to match .
-				if ((tmpC == tarC || tarC == '*') && tmpC != '.') {
-
-					// if the query still remains
-					// increase the index to make it further
-					// if (queryIndex != queryLength - 1) {
-					if ((currentPredicates = predicates.get(tarC)) != null) {
-						checkMode = true;
-						checkModePosMark = queryIndex;
-					}
-					if (queryIndex != queryLength - 1) {
-						queryIndex++;
-					}
-					// }
-
-					// otherwise we set to fetch mode
-					if (queryIndex == queryLength - 1) {
-						fetchMode = true;
-					}
-
-				}
-
-				// if the tmpC is ., we pop the first element from the stack
-				if (tmpC == '.') {
-					stack.pop();
-					if (stack.size() < queryLength - 1) {
-						queryIndex--;
-						fetchMode = false;
-					}
-				}
-
-				// is the tmpC is $, and mode is fetch, also the one we need
-				// store the $ position.
-				if (tmpC == '$' && fetchMode && (tarC == preC || tarC == '*')) {
-					ret.add(position);
-				}
-				preC = tmpC;
+					
 			}
+
+			if (tmpC == '.') {
+				stack.pop();
+				if(stack.size() == fetchModeStackSize - 2) {
+					fetchMode = false;
+				}
+			}
+
+			// store the char in this loop
+			preC = tmpC;
 		}
 
 		return ret;

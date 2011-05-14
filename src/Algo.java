@@ -62,7 +62,7 @@ public class Algo {
 	}
 
 	// search function
-	public void search(String fileName, String searchPattern) {
+	public boolean search(String fileName, String searchPattern, String matchPattern) {
 		File bwtFile = new File("files/" + fileName);
 		length = (int) bwtFile.length();
 
@@ -162,7 +162,7 @@ public class Algo {
 					}
 				}
 			}
-
+			bwt.close();
 			/*
 			 * for (int i = 0; i < numberOfBuckets; i++) { for (int j = 0; j <
 			 * numberOfChars; j++) System.out.print(tablesForBucket[i][j] +
@@ -186,13 +186,15 @@ public class Algo {
 				last = tableC[c] + occ(c, last) - 1;
 				i--;
 			}
-
+			
 			if (last < first) {
 				System.out.println("No rows prefixed by " + searchPattern);
-			} else {
-				System.out.println("First: " + first + "\nLast: " + last);
+				return false;
 			}
-
+			/* else {
+				//System.out.println("First: " + first + "\nLast: " + last);
+			}*/
+/*
 			System.out.println(fileContent[first]);
 			System.out.println(tableC[fileContent[first]]);
 			System.out.println(occ(fileContent[first], first)-1);
@@ -217,7 +219,21 @@ public class Algo {
 			} while (score);
 			bw.close();
 			fw.close();
-			
+*/
+			StringBuffer buffer = new StringBuffer();
+			while(true) {
+				char tmpC = fileContent[first];
+				if(tmpC == ']')
+					break;
+				buffer.append(fileContent[first]);
+				first = tableC[tmpC] + occ(tmpC, first) - 1;
+			}
+			if(buffer.reverse().toString().indexOf(matchPattern) != -1) {
+				return true;
+			} else {
+				return false;
+			}
+/*
 			System.out.println();
 			
 			System.out.println("The program takes: "
@@ -225,10 +241,12 @@ public class Algo {
 							.getRuntime().freeMemory()) / 1048576
 					+ " Mb to run");
 			bwt.close();
+*/
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		return false;
 	}
 }
