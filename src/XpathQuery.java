@@ -9,11 +9,36 @@ import java.util.HashMap;
 import java.util.Stack;
 
 public class XpathQuery {
-	public ArrayList<Integer> getPositions(String fileName, String query) {
+	public ArrayList<Integer> getPositions(String fileName, String query, ArrayList<Character> tops) {
 
 		// read the files
 		File topFile = new File("files/" + fileName + ".top");
 		File mapFile = new File("files/" + fileName + ".map");
+		
+		if(query.equals("/*")) {
+			// here to output the whole text
+			// first need to get the first $
+			try {
+				BufferedReader top = new BufferedReader(new FileReader(topFile));
+				int position = 0;
+				while(top.ready()) {
+					if((char)top.read() == '$') {
+						break;
+					}
+					position++;
+				}
+				
+				// output the whole text
+				return null;
+				
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 
 		BufferedReader map;
 		try {
@@ -93,10 +118,12 @@ public class XpathQuery {
 		Arrays.fill(markForSequence, false);
 
 		int queryLength = querySequence.size();
+		boolean[] queryConditionFlag = new boolean[queryLength];
+		Arrays.fill(queryConditionFlag, false);
+		
 		int queryIndex = 0;
 		int position = 0;
 		boolean fetchMode = false;
-		boolean checkMode = false;
 		int firstCondition = 0;
 
 		String searchPattern = new String();
@@ -112,7 +139,7 @@ public class XpathQuery {
 		int fetchModeStackSize = 0;
 		int tmpPosition = 0;
 
-		Algo algo = new Algo();
+		Algo algo = new Algo(fileName);
 
 		int tmpStackSize = 0;
 		int tmpGoodPosition = 0;
@@ -121,19 +148,50 @@ public class XpathQuery {
 
 		String currentPredicates = new String();
 		Stack<Character> stack = new Stack<Character>();
-		Stack<Character> tmpStack = new Stack<Character>();
+		
+		int balancor = 0;
+		
 		for (position = 0; position < length; position++) {
 			
 			if(skipList.contains(position)) {
-				tmpStack.clear();
-				tmpStack.push(fileContent[position++]);
-				while(tmpStack.size() > 0) {
+				balancor = 0;
+				//tmpStack.clear();
+				balancor ++;
+				position ++;
+				//tmpStack.push(fileContent[position++]);
+				//while(tmpStack.size() > 0) {
+				while(balancor > 0) {
 					char c = fileContent[position++];
 					if(Character.isLetter(c))
-						tmpStack.push(c);
+						balancor ++;
+						//tmpStack.push(c);
 					if(c == '.') 
-						tmpStack.pop();
+						balancor --;
+						//tmpStack.pop();
 				}
+				position --;
+				continue;
+			}
+			
+			if(skipList.contains(position-1)) {
+				balancor = 0;
+				//tmpStack.clear();
+				balancor += 2;
+				position ++;
+				//tmpStack.push(fileContent[position-1]);
+				//tmpStack.push(fileContent[position++]);
+				//while(tmpStack.size() > 0) {
+				while(balancor > 0) {
+					char c = fileContent[position++];
+					if(Character.isLetter(c))
+						balancor ++;
+						//tmpStack.push(c);
+					if(c == '.') 
+						balancor --;
+						//tmpStack.pop();
+				}
+				position --;
+				continue;
 			}
 			
 			// the char from file
@@ -147,11 +205,17 @@ public class XpathQuery {
 			}
 
 			// if the expected char shows up
-			if (tmpC == tarC || tarC == '*') {
+			if ((tmpC == tarC || tarC == '*') && (Character.isLetter(tmpC))) {
 				currentPredicates = predicates.get(tarC);
 				if (currentPredicates != null) {
+					
+					if(queryConditionFlag[queryIndex]) {
+						if(queryIndex != queryLength - 1)
+							queryIndex++;
+						continue;
+					}
+					
 					// need to check the nodes
-					checkMode = true;
 					tmpGoodPosition = position;
 					tmpStackSize = stack.size();
 					careC = tmpC;
@@ -180,15 +244,30 @@ public class XpathQuery {
 							checkModePosMark = position;
 
 							while (stack.size() >= tmpStackSize - 1) {
-
+								
 								if (stack.size() == tmpStackSize) {
-									careC = stack.peek();
+									if(tarC == '*')
+										careC = stack.peek();
+									if( careC != stack.peek() ) {
+										stack.pop();
+										balancor = 1;
+										char c = fileContent[++position];
+										while(balancor > 0) {
+											if(Character.isLetter(c)) {
+												balancor ++;
+											}
+											if(c == '.') {
+												balancor --;
+											}
+											c = fileContent[++position];
+										}
+										position --;
+									}
 								}
-
+								
 								searchTmpC = fileContent[++position];
 
 								if(Character.isLetter(searchTmpC)) {
-									
 									stack.push(searchTmpC);
 								}
 								
@@ -201,12 +280,16 @@ public class XpathQuery {
 											// otherwise intersect.
 											goodList.add(tmpGoodPosition);
 											searchResult = false;
-										} else if( !searchResult ) {
+										} else if (searchResult) {
+											searchResult = false;
+										}
+										else if( !searchResult ) {
 											if(goodList.contains(tmpGoodPosition)) {
-												goodList.remove(tmpGoodPosition);
+												goodList.remove(new Integer(tmpGoodPosition));
 											}
 											skipList.add(tmpGoodPosition);
 										}
+										
 										tmpGoodPosition = position+1;
 									}
 								}
@@ -216,27 +299,43 @@ public class XpathQuery {
 										continue;
 									}
 									tmpPosition = position+2;
+									tmpPosition %= length;
 									while (fileContent[tmpPosition] != '$') {
 										tmpPosition++;
+										tmpPosition %= length;
 									}
-									if (algo.search("tiny.bwt", "["
+									if (algo.match("["
 											+ tmpPosition + "]", searchPattern)) {
 										searchResult |= true;
 									}
 								}
 							}
 
-							position = checkModePosMark;
-							stack.push(fileContent[position-1]);
-							stack.push(fileContent[position]);
+							if(stack.size() == 0) { 
+								position = checkModePosMark;
+							
+								stack.push(fileContent[position-1]);
+								stack.push(fileContent[position]);
+							}
+							tmpGoodPosition = position;
 						}
 					}
+					if(stack.size() != 0) {
+						queryIndex --;
+					} else {
+						queryConditionFlag[queryIndex] = true;
+					}
 				}
-				if(queryIndex == querySequence.size() - 1) {
+				if(queryIndex != querySequence.size() - 1 && queryLength != 1) {			
+					queryIndex++;
+					if(queryIndex == querySequence.size()-1) {
+						fetchMode = true;
+						fetchModeStackSize = stack.size();
+					}
+				}
+				if(queryLength == 1) {
 					fetchMode = true;
 					fetchModeStackSize = stack.size();
-				} else {
-					queryIndex++;
 				}
 					
 			}
@@ -244,10 +343,30 @@ public class XpathQuery {
 			if (tmpC == '.') {
 				stack.pop();
 				if(stack.size() == fetchModeStackSize - 2) {
-					fetchMode = false;
+					if(queryLength != 1) {
+						fetchMode = false;
+						queryIndex--;
+					}
 				}
 			}
-
+			
+			if (tmpC == '$' && fetchMode) {
+				if(stack.contains(tarC) || tarC == '*') {
+					tmpPosition = position;
+					while(true) {
+						
+						tmpPosition++;
+						tmpPosition %= length;
+						
+						if(fileContent[tmpPosition] == '$') {
+							ret.add(tmpPosition);
+							tops.add(tarC);
+							break;
+						}
+						
+					}
+				}
+			}
 			// store the char in this loop
 			preC = tmpC;
 		}

@@ -30,40 +30,8 @@ public class Algo {
 	// table C to store all the rank
 	public int[] tableC;
 
-	public int occ(char c, int pos) {
-		int occ = 0;
-
-		// get the current bucketNo and superblockNo
-		int bucketNo = (int) Math.floor(pos / sizeOfBucket);
-		int currentBucketWithinBlock = bucketNo % sizeOfBucket;
-		int currentPosWithinBucket = pos % sizeOfBucket;
-		int superblockNo = (int) Math.floor(pos / sizeOfSuperblock);
-
-		// get the real representation of c
-		int targetChar = mappingArray[c];
-
-		// plus the former superblock
-		if (superblockNo != 0) {
-			occ += tablesForSuperblock[superblockNo - 1][targetChar];
-		}
-
-		// plus the former bucket
-		if (currentBucketWithinBlock != 0) {
-			occ += tablesForBucket[bucketNo - 1][targetChar];
-		}
-
-		// count within the bucket
-		for (int i = 0; i <= currentPosWithinBucket; i++) {
-			if (fileContent[pos - i] == c) {
-				occ += 1;
-			}
-		}
-		return occ;
-	}
-
-	// search function
-	public boolean search(String fileName, String searchPattern, String matchPattern) {
-		File bwtFile = new File("files/" + fileName);
+	public Algo(String fileName) {
+		File bwtFile = new File("files/" + fileName + ".bwt");
 		length = (int) bwtFile.length();
 
 		// get all those useful numbers
@@ -163,90 +131,103 @@ public class Algo {
 				}
 			}
 			bwt.close();
-			/*
-			 * for (int i = 0; i < numberOfBuckets; i++) { for (int j = 0; j <
-			 * numberOfChars; j++) System.out.print(tablesForBucket[i][j] +
-			 * "\t"); System.out.println(); }
-			 * 
-			 * System.out.println();
-			 * 
-			 * for (int i = 0; i < numberOfSuperblocks; i++) { for (int j = 0; j
-			 * < numberOfChars; j++) System.out.print(tablesForSuperblock[i][j]
-			 * + "\t"); System.out.println(); }
-			 */
-
-			int i = searchPattern.length() - 1;
-			char c = searchPattern.charAt(i);
-			int first = tableC[c];
-			int last = tableC[c + 1] - 1;
-
-			while ((first <= last) && (i >= 1)) {
-				c = searchPattern.charAt(i - 1);
-				first = tableC[c] + occ(c, first - 1);
-				last = tableC[c] + occ(c, last) - 1;
-				i--;
-			}
-			
-			if (last < first) {
-				System.out.println("No rows prefixed by " + searchPattern);
-				return false;
-			}
-			/* else {
-				//System.out.println("First: " + first + "\nLast: " + last);
-			}*/
-/*
-			System.out.println(fileContent[first]);
-			System.out.println(tableC[fileContent[first]]);
-			System.out.println(occ(fileContent[first], first)-1);
-			
-			File output = new File("files/dblp300k.cda");
-			FileWriter fw = new FileWriter(output);
-			BufferedWriter bw = new BufferedWriter(fw);
-			
-			char[] buffer = new char[128];
-			int mark = 0;
-			boolean score = true;
-			do{
-				for(i = 127; i >= 0; i -- ) {
-					if(++mark == length) {
-						score = false;
-						break;
-					}
-					buffer[i] = fileContent[first];
-					first = tableC[fileContent[first]] + occ(fileContent[first], first) - 1;
-				}
-				bw.write(buffer, 0, buffer.length);
-			} while (score);
-			bw.close();
-			fw.close();
-*/
-			StringBuffer buffer = new StringBuffer();
-			while(true) {
-				char tmpC = fileContent[first];
-				if(tmpC == ']')
-					break;
-				buffer.append(fileContent[first]);
-				first = tableC[tmpC] + occ(tmpC, first) - 1;
-			}
-			if(buffer.reverse().toString().indexOf(matchPattern) != -1) {
-				return true;
-			} else {
-				return false;
-			}
-/*
-			System.out.println();
-			
-			System.out.println("The program takes: "
-					+ (Runtime.getRuntime().totalMemory() - Runtime
-							.getRuntime().freeMemory()) / 1048576
-					+ " Mb to run");
-			bwt.close();
-*/
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return false;
 	}
+
+	public int occ(char c, int pos) {
+		int occ = 0;
+
+		// get the current bucketNo and superblockNo
+		int bucketNo = (int) Math.floor(pos / sizeOfBucket);
+		int currentBucketWithinBlock = bucketNo % sizeOfBucket;
+		int currentPosWithinBucket = pos % sizeOfBucket;
+		int superblockNo = (int) Math.floor(pos / sizeOfSuperblock);
+
+		// get the real representation of c
+		int targetChar = mappingArray[c];
+
+		// plus the former superblock
+		if (superblockNo != 0) {
+			occ += tablesForSuperblock[superblockNo - 1][targetChar];
+		}
+
+		// plus the former bucket
+		if (currentBucketWithinBlock != 0) {
+			occ += tablesForBucket[bucketNo - 1][targetChar];
+		}
+
+		// count within the bucket
+		for (int i = 0; i <= currentPosWithinBucket; i++) {
+			if (fileContent[pos - i] == c) {
+				occ += 1;
+			}
+		}
+		return occ;
+	}
+	
+	public int search(String searchPattern) {
+
+		int i = searchPattern.length() - 1;
+		char c = searchPattern.charAt(i);
+		int first = tableC[c];
+		int last = tableC[c + 1] - 1;
+
+		while ((first <= last) && (i >= 1)) {
+			c = searchPattern.charAt(i - 1);
+			first = tableC[c] + occ(c, first - 1);
+			last = tableC[c] + occ(c, last) - 1;
+			i--;
+		}
+
+		if (last < first) {
+			System.out.println("No rows prefixed by " + searchPattern);
+			return -1;
+		}
+
+		return first;
+	}
+
+	// search function
+	public boolean match(String searchPattern, String matchPattern) {
+
+		int first = search(searchPattern);
+		
+		if(first == -1) {
+			return false;
+		}
+		
+		StringBuffer buffer = new StringBuffer();
+		while (true) {
+			char tmpC = fileContent[first];
+			if (tmpC == ']')
+				break;
+			buffer.append(fileContent[first]);
+			first = tableC[tmpC] + occ(tmpC, first) - 1;
+		}
+		if (buffer.reverse().toString().indexOf(matchPattern) != -1) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	public String recover(String searchPattern) {
+		
+		int position = search(searchPattern);
+		
+		StringBuffer buffer = new StringBuffer();
+		while (true) {
+			char tmpC = fileContent[position];
+			if (tmpC == ']')
+				break;
+			buffer.append(fileContent[position]);
+			position = tableC[tmpC] + occ(tmpC, position) - 1;
+		}
+		return buffer.reverse().toString();
+	}
+
 }
