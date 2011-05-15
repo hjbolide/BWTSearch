@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+
 public class BWTSearchEntry {
 
 	// public static String CONDITION = "__condition__";

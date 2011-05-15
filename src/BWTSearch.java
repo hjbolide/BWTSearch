@@ -1,3 +1,8 @@
+
+
+
+
+import java.io.BufferedReader;
 import java.io.Reader;
 import java.io.Writer;
 
@@ -5,6 +10,12 @@ import java.io.Writer;
  * BWTSearch stub file.  This class has to be filled in with your code.
  */
 public class BWTSearch {
+	
+	// three bufferedReader to read from file
+	BufferedReader topBr, mapBr, bwtBr;
+	
+	// tool class to search the bwt file
+	Algo algo;
     /**
      * Public constructor for BWTSearch.
      * Any initialization that you need to do in preparation
@@ -20,6 +31,9 @@ public class BWTSearch {
      */
     public BWTSearch(Reader top, Reader map, Reader bwt) {
         // Your code here.
+    	topBr = new BufferedReader(top);
+    	mapBr = new BufferedReader(map);
+    	bwtBr = new BufferedReader(bwt);
     	
     }
     

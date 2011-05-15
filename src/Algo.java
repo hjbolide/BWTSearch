@@ -1,3 +1,6 @@
+
+
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -91,8 +94,49 @@ public class Algo {
 
 			bwt = null;
 			bwt = new BufferedReader(new FileReader(bwtFile));
+			
+			int counter = 0;
+			while (counter < length) {
+				for (int i = 0; i < numberOfBuckets; i++) {
+					
+					// fill in content for every bucket
+					for (int j = 0; j < sizeOfBucket && (counter < length); j++) {
+						char c = fileContent[counter];
+						counter ++;
+						int tempChar = mappingArray[c];
 
-			while (bwt.ready()) {
+						// when i % sizeOfBucket == 0, that means a new
+						// superblock starts
+						// when j == 0, that means a new bucket starts.
+						if (i % sizeOfBucket != 0 && j == 0) {
+							for (int k = 0; k < numberOfChars; k++) {
+								tablesForBucket[i][k] = tablesForBucket[i - 1][k];
+							}
+						}
+
+						// count for the chars
+						tablesForBucket[i][tempChar]++;
+
+						// fill in content for superblock
+						if (++countForSuperblock == sizeOfSuperblock) {
+							if (superblockIndex == 0) {
+								for (int k = 0; k < numberOfChars; k++) {
+									tablesForSuperblock[superblockIndex][k] = tablesForBucket[i][k];
+								}
+							} else {
+								for (int k = 0; k < numberOfChars; k++) {
+									tablesForSuperblock[superblockIndex][k] = tablesForBucket[i][k]
+											+ tablesForSuperblock[superblockIndex - 1][k];
+								}
+							}
+
+							countForSuperblock = 0;
+							superblockIndex++;
+						}
+					}
+				}
+			}
+			/*while (bwt.ready()) {
 				for (int i = 0; i < numberOfBuckets; i++) {
 
 					// fill in content for every bucket
@@ -129,7 +173,7 @@ public class Algo {
 						}
 					}
 				}
-			}
+			}*/
 			bwt.close();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();

@@ -1,3 +1,6 @@
+
+
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -8,21 +11,26 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Stack;
 
+
 public class XpathQuery {
-	public ArrayList<Integer> getPositions(String fileName, String query, ArrayList<Character> tops) {
+	@SuppressWarnings("unused")
+	public ArrayList<String> getPositions(String fileName, String query,
+			ArrayList<Character> tops) {
 
 		// read the files
 		File topFile = new File("files/" + fileName + ".top");
 		File mapFile = new File("files/" + fileName + ".map");
+		ArrayList<String> ret = new ArrayList<String>();
 		
-		if(query.equals("/*")) {
+		/*if (query.equals("/*") || query.indexOf('/') == query.lastIndexOf('/')) {
+			System.out.println('f');
 			// here to output the whole text
 			// first need to get the first $
 			try {
 				BufferedReader top = new BufferedReader(new FileReader(topFile));
 				int position = 0;
-				while(top.ready()) {
-					if((char)top.read() == '$') {
+				while (top.ready()) {
+					if ((char) top.read() == '$') {
 						break;
 					}
 					position++;
@@ -30,7 +38,7 @@ public class XpathQuery {
 				
 				// output the whole text
 				return null;
-				
+
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -38,7 +46,7 @@ public class XpathQuery {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-		}
+		}*/
 
 		BufferedReader map;
 		try {
@@ -61,7 +69,6 @@ public class XpathQuery {
 			e.printStackTrace();
 		}
 
-		ArrayList<Integer> ret = new ArrayList<Integer>();
 		int length = (int) topFile.length();
 		char[] fileContent = new char[length];
 
@@ -120,7 +127,7 @@ public class XpathQuery {
 		int queryLength = querySequence.size();
 		boolean[] queryConditionFlag = new boolean[queryLength];
 		Arrays.fill(queryConditionFlag, false);
-		
+
 		int queryIndex = 0;
 		int position = 0;
 		boolean fetchMode = false;
@@ -128,246 +135,171 @@ public class XpathQuery {
 
 		String searchPattern = new String();
 		char tmpC;
-		char tarC;
-		char careC;
+		char tarC = ' ';
 		char conditionC = ' ';
-		char searchTmpC;
+		char matchedC = ' ';
 		char preC = ' ';
-		ArrayList<Integer> goodList = new ArrayList<Integer>();
-		ArrayList<Integer> skipList = new ArrayList<Integer>();
 		int checkModePosMark = 0;
 		int fetchModeStackSize = 0;
-		int tmpPosition = 0;
+		boolean inStructure = false;
+		
+		int level = 0;
 
 		Algo algo = new Algo(fileName);
 
 		int tmpStackSize = 0;
-		int tmpGoodPosition = 0;
 
 		boolean searchResult = false;
 
 		String currentPredicates = new String();
 		Stack<Character> stack = new Stack<Character>();
-		
-		int balancor = 0;
-		
+		Stack<Character> tmpStack = new Stack<Character>();
+
+		int tmpCheckPos = 0;
+		int tmpPos = 0;
+		int forCheckPos = 0;
+		int checkPos = 0;
+
 		for (position = 0; position < length; position++) {
 			
-			if(skipList.contains(position)) {
-				balancor = 0;
-				//tmpStack.clear();
-				balancor ++;
-				position ++;
-				//tmpStack.push(fileContent[position++]);
-				//while(tmpStack.size() > 0) {
-				while(balancor > 0) {
-					char c = fileContent[position++];
-					if(Character.isLetter(c))
-						balancor ++;
-						//tmpStack.push(c);
-					if(c == '.') 
-						balancor --;
-						//tmpStack.pop();
+			if(stack.size() + 1 == queryIndex) {
+				queryIndex --;
+				if(fetchMode && level >= 0) {
+					while(level-- != 0) {
+						ret.add(".");
+					}
+					level ++;
 				}
-				position --;
-				continue;
+				fetchMode = false;
 			}
 			
-			if(skipList.contains(position-1)) {
-				balancor = 0;
-				//tmpStack.clear();
-				balancor += 2;
-				position ++;
-				//tmpStack.push(fileContent[position-1]);
-				//tmpStack.push(fileContent[position++]);
-				//while(tmpStack.size() > 0) {
-				while(balancor > 0) {
-					char c = fileContent[position++];
-					if(Character.isLetter(c))
-						balancor ++;
-						//tmpStack.push(c);
-					if(c == '.') 
-						balancor --;
-						//tmpStack.pop();
-				}
-				position --;
-				continue;
-			}
-			
-			// the char from file
 			tmpC = fileContent[position];
-
-			// the char from querySequence
-			tarC = querySequence.get(queryIndex);
-
+			if(queryIndex >= queryLength)
+				tarC = querySequence.get(queryLength-1);
+			else 
+				tarC = querySequence.get(queryIndex);
+			
 			if (Character.isLetter(tmpC)) {
 				stack.push(tmpC);
 			}
-
-			// if the expected char shows up
-			if ((tmpC == tarC || tarC == '*') && (Character.isLetter(tmpC))) {
-				currentPredicates = predicates.get(tarC);
-				if (currentPredicates != null) {
-					
-					if(queryConditionFlag[queryIndex]) {
-						if(queryIndex != queryLength - 1)
-							queryIndex++;
-						continue;
-					}
-					
-					// need to check the nodes
-					tmpGoodPosition = position;
-					tmpStackSize = stack.size();
-					careC = tmpC;
-					String[] currentPredicatesChunk = currentPredicates
-							.split("[\\[\\]]");
-					for (int i = 0; i < currentPredicatesChunk.length; i++) {
-						if (currentPredicatesChunk[i].length() != 0) {
-							firstCondition = i;
-							break;
-						}
-					}
-					for (int i = 0; i < currentPredicatesChunk.length; i++) {
-						if (currentPredicatesChunk[i].length() == 0)
-							continue;
-						String[] currentPredicateChunk = currentPredicatesChunk[i]
-								.split("[\\~\"]");
-						for (int j = 0; j < currentPredicateChunk.length; j++) {
-							if(currentPredicateChunk[j].length() == 0)
-								continue;
-							if(currentPredicateChunk[j].length() == 1) {
-								conditionC = currentPredicateChunk[j].charAt(0);
-								continue;
-							}
-							
-							searchPattern = currentPredicateChunk[j];
-							checkModePosMark = position;
-
-							while (stack.size() >= tmpStackSize - 1) {
-								
-								if (stack.size() == tmpStackSize) {
-									if(tarC == '*')
-										careC = stack.peek();
-									if( careC != stack.peek() ) {
-										stack.pop();
-										balancor = 1;
-										char c = fileContent[++position];
-										while(balancor > 0) {
-											if(Character.isLetter(c)) {
-												balancor ++;
-											}
-											if(c == '.') {
-												balancor --;
-											}
-											c = fileContent[++position];
-										}
-										position --;
-									}
-								}
-								
-								searchTmpC = fileContent[++position];
-
-								if(Character.isLetter(searchTmpC)) {
-									stack.push(searchTmpC);
-								}
-								
-								if (searchTmpC == '.') {
-									stack.pop();
-									if(stack.size() == tmpStackSize - 1) {
-										if(searchResult && (i == firstCondition)) {
-											// check if the first one 
-											// direct add
-											// otherwise intersect.
-											goodList.add(tmpGoodPosition);
-											searchResult = false;
-										} else if (searchResult) {
-											searchResult = false;
-										}
-										else if( !searchResult ) {
-											if(goodList.contains(tmpGoodPosition)) {
-												goodList.remove(new Integer(tmpGoodPosition));
-											}
-											skipList.add(tmpGoodPosition);
-										}
-										
-										tmpGoodPosition = position+1;
-									}
-								}
-
-								if (searchTmpC == conditionC) {
-									if (fileContent[position + 2] != '.') {
-										continue;
-									}
-									tmpPosition = position+2;
-									tmpPosition %= length;
-									while (fileContent[tmpPosition] != '$') {
-										tmpPosition++;
-										tmpPosition %= length;
-									}
-									if (algo.match("["
-											+ tmpPosition + "]", searchPattern)) {
-										searchResult |= true;
-									}
-								}
-							}
-
-							if(stack.size() == 0) { 
-								position = checkModePosMark;
-							
-								stack.push(fileContent[position-1]);
-								stack.push(fileContent[position]);
-							}
-							tmpGoodPosition = position;
-						}
-					}
-					if(stack.size() != 0) {
-						queryIndex --;
-					} else {
-						queryConditionFlag[queryIndex] = true;
-					}
-				}
-				if(queryIndex != querySequence.size() - 1 && queryLength != 1) {			
+			
+			if ((tmpC == tarC || tarC == '*') && Character.isLetter(tmpC)) {
+				//if(queryIndex != queryLength - 1) {
+				if(queryIndex < queryLength)
 					queryIndex++;
-					if(queryIndex == querySequence.size()-1) {
-						fetchMode = true;
-						fetchModeStackSize = stack.size();
-					}
-				}
-				if(queryLength == 1) {
+				
+				if(queryIndex == queryLength - 1 || queryIndex >= queryLength) 
 					fetchMode = true;
-					fetchModeStackSize = stack.size();
+				//}
+
+				
+				currentPredicates = predicates.get(tarC);
+				if (currentPredicates == null) {
+					preC = tmpC;
+					continue;
 				}
-					
+				
+				
+				
+				String[] currentPredicatesChunk = currentPredicates
+						.split("[\\[\\]]");
+				checkPos = position;
+				boolean finalSearchResult = true;
+				// get all the predicates
+				for (int predicatesIndex = 0; predicatesIndex < currentPredicatesChunk.length; predicatesIndex++) {
+					forCheckPos = position;
+					if (currentPredicatesChunk[predicatesIndex].length() == 0)
+						continue;
+					String[] currentPredicateChunk = currentPredicatesChunk[predicatesIndex]
+							.split("[\\~\"]");
+					// get the conditionC and pattern
+					boolean checkState = false;
+					for (int predicateIndex = 0; predicateIndex < currentPredicateChunk.length; predicateIndex++) {
+						if (currentPredicateChunk[predicateIndex].length() == 0)
+							continue;
+						if (currentPredicateChunk[predicateIndex].length() == 1 && !checkState) {
+							conditionC = currentPredicateChunk[predicateIndex]
+									.charAt(0);
+							checkState = true;
+						}
+						else {
+							searchPattern = currentPredicateChunk[predicateIndex];
+
+							// record the current position
+							tmpCheckPos = position;
+							tmpStack.push(tmpC);
+							position++;
+							searchResult = false;
+							tmpPos = 0;
+							while (tmpStack.size() > 0) {
+								char c = fileContent[position];
+								if (c == '.') {
+									tmpStack.pop();
+								}
+								if (Character.isLetter(c)) {
+									tmpStack.push(c);
+								}
+								if (c == conditionC) {
+									if (fileContent[position + 1] == '$'
+											&& fileContent[position + 2] == '.') {
+										// find the next $
+										tmpPos = position + 2;
+										while (fileContent[++tmpPos] != '$')
+											;
+										searchResult |= algo.match("[" + tmpPos
+												+ "]", searchPattern);
+									}
+								}
+								position++;
+							}
+						}
+					}
+					finalSearchResult &= searchResult;
+					tmpPos = position - 1;
+					position = forCheckPos;
+				}
+				if (finalSearchResult) {
+					position = checkPos;
+					if(queryIndex < queryLength)
+						queryIndex ++;
+				} else {
+					stack.pop();
+					queryIndex--;
+					fetchMode = false;
+					position = tmpPos;
+				}
 			}
 
 			if (tmpC == '.') {
-				stack.pop();
-				if(stack.size() == fetchModeStackSize - 2) {
-					if(queryLength != 1) {
-						fetchMode = false;
-						queryIndex--;
-					}
-				}
+				if(stack.size() > 0)
+					stack.pop();
 			}
-			
-			if (tmpC == '$' && fetchMode) {
-				if(stack.contains(tarC) || tarC == '*') {
-					tmpPosition = position;
-					while(true) {
-						
-						tmpPosition++;
-						tmpPosition %= length;
-						
-						if(fileContent[tmpPosition] == '$') {
-							ret.add(tmpPosition);
-							tops.add(tarC);
-							break;
+
+			if (tmpC == '$' && fetchMode && (stack.contains(tarC) || tarC == '*')) {
+				if (queryIndex >= queryLength - 1) {
+					tmpPos = position + 1;
+					while (fileContent[tmpPos++] != '$') {
+						tmpPos %= length;
+					}
+					tmpPos--;
+					if(queryIndex > stack.size()-1) {
+						;
+					} else {
+						if(level == 0 && queryLength != 1) {
+							for(int i = 1; i < stack.size()-1; i++) {
+								ret.add("" + stack.get(i));
+								level ++;
+							}
+						} else if (queryLength == 1 && level == 0) {
+							for(int i = 1; i < stack.size()-1; i++) {
+								ret.add("" + stack.get(i));
+								level ++;
+							}
 						}
-						
 					}
+					ret.add("" + preC + tmpPos + ".");
 				}
 			}
-			// store the char in this loop
 			preC = tmpC;
 		}
 
