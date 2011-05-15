@@ -19,13 +19,13 @@ public class XpathQueryPrac {
 		XpathQuery xpath = new XpathQuery();
 		ArrayList<String> positions = new ArrayList<String>();
 		ArrayList<Character> tops = new ArrayList<Character>();
-		String fileName = "tiny";
+		String fileName = "dblp300k";
 		//positions = xpath.getPositions(fileName, "/*", tops);
-		positions = xpath.getPositions(fileName, "/dblp/article/*", tops);
+		positions = xpath.getPositions(fileName, "/dblp/*[url~\"TR\"]", tops);
 		Algo algo = new Algo(fileName);
-		File output = new File("output.xml");
-		File topOutput = new File("output.top");
-		File cdaOutput = new File("output.cda");
+		File output = new File("files/output.xml");
+		File topOutput = new File("files/output.top");
+		File cdaOutput = new File("files/output.cda");
 		try {
 			FileWriter fw = new FileWriter(output);
 			FileWriter tfw = new FileWriter(topOutput);

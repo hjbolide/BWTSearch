@@ -21,32 +21,6 @@ public class XpathQuery {
 		File topFile = new File("files/" + fileName + ".top");
 		File mapFile = new File("files/" + fileName + ".map");
 		ArrayList<String> ret = new ArrayList<String>();
-		
-		/*if (query.equals("/*") || query.indexOf('/') == query.lastIndexOf('/')) {
-			System.out.println('f');
-			// here to output the whole text
-			// first need to get the first $
-			try {
-				BufferedReader top = new BufferedReader(new FileReader(topFile));
-				int position = 0;
-				while (top.ready()) {
-					if ((char) top.read() == '$') {
-						break;
-					}
-					position++;
-				}
-				
-				// output the whole text
-				return null;
-
-			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}*/
 
 		BufferedReader map;
 		try {
@@ -162,6 +136,9 @@ public class XpathQuery {
 
 		for (position = 0; position < length; position++) {
 			
+			if(queryLength == 1) {
+				querySequence.set(0, '*');
+			}
 			if(stack.size() + 1 == queryIndex) {
 				queryIndex --;
 				if(fetchMode && level >= 0) {
@@ -175,7 +152,7 @@ public class XpathQuery {
 			
 			tmpC = fileContent[position];
 			if(queryIndex >= queryLength)
-				tarC = querySequence.get(queryLength-1);
+				;//tarC = querySequence.get(queryLength-1);
 			else 
 				tarC = querySequence.get(queryIndex);
 			
@@ -191,7 +168,6 @@ public class XpathQuery {
 				if(queryIndex == queryLength - 1 || queryIndex >= queryLength) 
 					fetchMode = true;
 				//}
-
 				
 				currentPredicates = predicates.get(tarC);
 				if (currentPredicates == null) {
@@ -244,7 +220,11 @@ public class XpathQuery {
 											&& fileContent[position + 2] == '.') {
 										// find the next $
 										tmpPos = position + 2;
-										while (fileContent[++tmpPos] != '$')
+										tmpPos %= length;
+										while (fileContent[tmpPos] != '$') {
+											++tmpPos;
+											tmpPos %= length;
+										}
 											;
 										searchResult |= algo.match("[" + tmpPos
 												+ "]", searchPattern);
@@ -262,6 +242,8 @@ public class XpathQuery {
 					position = checkPos;
 					if(queryIndex < queryLength)
 						queryIndex ++;
+					if(queryIndex >= queryLength)
+						tarC = ' ';
 				} else {
 					stack.pop();
 					queryIndex--;
@@ -275,7 +257,7 @@ public class XpathQuery {
 					stack.pop();
 			}
 
-			if (tmpC == '$' && fetchMode && (stack.contains(tarC) || tarC == '*')) {
+			if (tmpC == '$' && fetchMode && (stack.contains(tarC) || tarC == '*' || tarC == ' ')) {
 				if (queryIndex >= queryLength - 1) {
 					tmpPos = position + 1;
 					while (fileContent[tmpPos++] != '$') {
@@ -291,7 +273,7 @@ public class XpathQuery {
 								level ++;
 							}
 						} else if (queryLength == 1 && level == 0) {
-							for(int i = 1; i < stack.size()-1; i++) {
+							for(int i = 0; i < stack.size()-1; i++) {
 								ret.add("" + stack.get(i));
 								level ++;
 							}
