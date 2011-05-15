@@ -1,14 +1,7 @@
 
-
-
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 
 public class Algo {
 
@@ -28,42 +21,37 @@ public class Algo {
 	public int[][] tablesForSuperblock;
 
 	// store the file content
-	public char[] fileContent;
+	public ArrayList<Character> fileContent;
 
 	// table C to store all the rank
 	public int[] tableC;
 
-	public Algo(String fileName) {
-		File bwtFile = new File("files/" + fileName + ".bwt");
-		length = (int) bwtFile.length();
+	public Algo(ArrayList<Character> fileContent) {
 
-		// get all those useful numbers
-		sizeOfBucket = (int) Math.ceil(Math.log(length) / Math.log(2));
-		numberOfBuckets = (int) Math.ceil(length / sizeOfBucket);
-		sizeOfSuperblock = sizeOfBucket * sizeOfBucket;
-		numberOfSuperblocks = (int) Math.ceil(length / sizeOfSuperblock);
+			this.fileContent = fileContent;
 
-		// here to implement the occ function
-		try {
-			BufferedReader bwt = new BufferedReader(new FileReader(bwtFile));
-
-			// allocate the memory for fileContent
-			fileContent = new char[length];
-
+			int length = fileContent.size();
+		
 			int[] tableCOriginal = new int[256];
 			tableC = new int[256];
 
 			Arrays.fill(tableCOriginal, (int) 0);
 			Arrays.fill(tableC, (int) 0);
 
-			int index = 0;
+			Iterator<Character> iterator = fileContent.iterator();
+			
+			while (iterator.hasNext()) {
+				int tempChar = iterator.next();
+				tableCOriginal[tempChar]++;
+			}
+
+			// get all those useful numbers
+			sizeOfBucket = (int) Math.ceil(Math.log(length) / Math.log(2));
+			numberOfBuckets = (int) Math.ceil(length / sizeOfBucket);
+			sizeOfSuperblock = sizeOfBucket * sizeOfBucket;
+			numberOfSuperblocks = (int) Math.ceil(length / sizeOfSuperblock);
 
 			// the loop of reading the file, construct tableC
-			while (bwt.ready()) {
-				int tempChar = bwt.read();
-				tableCOriginal[tempChar]++;
-				fileContent[index++] = (char) tempChar;
-			}
 
 			numberOfChars = 0;
 			mappingArray = new int[256];
@@ -92,17 +80,14 @@ public class Algo {
 			int countForSuperblock = 0;
 			int superblockIndex = 0;
 
-			bwt = null;
-			bwt = new BufferedReader(new FileReader(bwtFile));
-			
 			int counter = 0;
 			while (counter < length) {
 				for (int i = 0; i < numberOfBuckets; i++) {
-					
+
 					// fill in content for every bucket
 					for (int j = 0; j < sizeOfBucket && (counter < length); j++) {
-						char c = fileContent[counter];
-						counter ++;
+						char c = fileContent.get(counter);
+						counter++;
 						int tempChar = mappingArray[c];
 
 						// when i % sizeOfBucket == 0, that means a new
@@ -136,50 +121,31 @@ public class Algo {
 					}
 				}
 			}
-			/*while (bwt.ready()) {
-				for (int i = 0; i < numberOfBuckets; i++) {
-
-					// fill in content for every bucket
-					for (int j = 0; j < sizeOfBucket && bwt.ready(); j++) {
-						int tempChar = mappingArray[bwt.read()];
-
-						// when i % sizeOfBucket == 0, that means a new
-						// superblock starts
-						// when j == 0, that means a new bucket starts.
-						if (i % sizeOfBucket != 0 && j == 0) {
-							for (int k = 0; k < numberOfChars; k++) {
-								tablesForBucket[i][k] = tablesForBucket[i - 1][k];
-							}
-						}
-
-						// count for the chars
-						tablesForBucket[i][tempChar]++;
-
-						// fill in content for superblock
-						if (++countForSuperblock == sizeOfSuperblock) {
-							if (superblockIndex == 0) {
-								for (int k = 0; k < numberOfChars; k++) {
-									tablesForSuperblock[superblockIndex][k] = tablesForBucket[i][k];
-								}
-							} else {
-								for (int k = 0; k < numberOfChars; k++) {
-									tablesForSuperblock[superblockIndex][k] = tablesForBucket[i][k]
-											+ tablesForSuperblock[superblockIndex - 1][k];
-								}
-							}
-
-							countForSuperblock = 0;
-							superblockIndex++;
-						}
-					}
-				}
-			}*/
-			bwt.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+			/*
+			 * while (bwt.ready()) { for (int i = 0; i < numberOfBuckets; i++) {
+			 * 
+			 * // fill in content for every bucket for (int j = 0; j <
+			 * sizeOfBucket && bwt.ready(); j++) { int tempChar =
+			 * mappingArray[bwt.read()];
+			 * 
+			 * // when i % sizeOfBucket == 0, that means a new // superblock
+			 * starts // when j == 0, that means a new bucket starts. if (i %
+			 * sizeOfBucket != 0 && j == 0) { for (int k = 0; k < numberOfChars;
+			 * k++) { tablesForBucket[i][k] = tablesForBucket[i - 1][k]; } }
+			 * 
+			 * // count for the chars tablesForBucket[i][tempChar]++;
+			 * 
+			 * // fill in content for superblock if (++countForSuperblock ==
+			 * sizeOfSuperblock) { if (superblockIndex == 0) { for (int k = 0; k
+			 * < numberOfChars; k++) { tablesForSuperblock[superblockIndex][k] =
+			 * tablesForBucket[i][k]; } } else { for (int k = 0; k <
+			 * numberOfChars; k++) { tablesForSuperblock[superblockIndex][k] =
+			 * tablesForBucket[i][k] + tablesForSuperblock[superblockIndex -
+			 * 1][k]; } }
+			 * 
+			 * countForSuperblock = 0; superblockIndex++; } } } }
+			 */
+			
 	}
 
 	public int occ(char c, int pos) {
@@ -206,13 +172,13 @@ public class Algo {
 
 		// count within the bucket
 		for (int i = 0; i <= currentPosWithinBucket; i++) {
-			if (fileContent[pos - i] == c) {
+			if (fileContent.get(pos - i) == c) {
 				occ += 1;
 			}
 		}
 		return occ;
 	}
-	
+
 	public int search(String searchPattern) {
 
 		int i = searchPattern.length() - 1;
@@ -239,17 +205,17 @@ public class Algo {
 	public boolean match(String searchPattern, String matchPattern) {
 
 		int first = search(searchPattern);
-		
-		if(first == -1) {
+
+		if (first == -1) {
 			return false;
 		}
-		
+
 		StringBuffer buffer = new StringBuffer();
 		while (true) {
-			char tmpC = fileContent[first];
+			char tmpC = fileContent.get(first);
 			if (tmpC == ']')
 				break;
-			buffer.append(fileContent[first]);
+			buffer.append(fileContent.get(first));
 			first = tableC[tmpC] + occ(tmpC, first) - 1;
 		}
 		if (buffer.reverse().toString().indexOf(matchPattern) != -1) {
@@ -260,15 +226,15 @@ public class Algo {
 	}
 
 	public String recover(String searchPattern) {
-		
+
 		int position = search(searchPattern);
-		
+
 		StringBuffer buffer = new StringBuffer();
 		while (true) {
-			char tmpC = fileContent[position];
+			char tmpC = fileContent.get(position);
 			if (tmpC == ']')
 				break;
-			buffer.append(fileContent[position]);
+			buffer.append(fileContent.get(position));
 			position = tableC[tmpC] + occ(tmpC, position) - 1;
 		}
 		return buffer.reverse().toString();
